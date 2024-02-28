@@ -11,8 +11,6 @@ def get_monthly_stock_with_dividends(stock, start, end, yearly_fee_rate=0.00153)
         # Download historical prices and dividends
         stock_data = yf.download(stock, start=start, end=end)
 
-        
-
         dividends = yf.Ticker(stock).dividends
         try: dividends.index = dividends.index.tz_localize(None)
         except TypeError:  pass
@@ -26,7 +24,7 @@ def get_monthly_stock_with_dividends(stock, start, end, yearly_fee_rate=0.00153)
             adjusted_close.loc[date:] *= adjustment_factor
         stock_data['Adjusted Close'] = adjusted_close
 
-        monthly_prices = stock_data.resample('M').first()
+        monthly_prices = stock_data.resample('MS').first()
 
         # Adjust the monthly prices to include the yearly fee
         monthly_fee = (1+yearly_fee_rate)**(1/12) - 1

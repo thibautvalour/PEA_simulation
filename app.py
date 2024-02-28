@@ -2,44 +2,38 @@ import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import datetime
 
+from data_loading_funcs import get_monthly_stock_with_dividends
+from strategy import Strategy
 """
-# Welcome to Streamlit!
-
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
-
-In the meantime, below is an example of what you can do with just a few lines of code:
-
-Test
+# S&P 500 passive investment strategy
 """
 
-num_points = st.slider("Number of points in spiral", 1, 10_000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+starting_year = st.slider("Starting year", 1994, 2024, 1994)
+ending_year = st.slider("Ending year", 1994, 2024, 2024)
 
-monthly_investment = st.number_input("Monthly investment", 0, 1000, 100)
-initial_investment = st.number_input("Initial investment", 0, 10000, 1000)
+initial_investment = st.number_input("Initial investment", 0, 100_000, 1000)
+initial_monthly_contribution = st.number_input("Monthly investment", 0, 1000, 100)
+monthly_contribution_increases_per_year = st.number_input("Contribution increase", 0, 500, 100)
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+stock = 'SPY'
+start = datetime.datetime(starting_year, 1, 1) 
+end = datetime.datetime(ending_year, 1, 1) 
+# # end = datetime.datetime.now() - datetime.timedelta(days=1) # Yesterday
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+strategy = Strategy(stock, start, end, initial_cash=initial_investment,
+                    initial_monthly_contribution=initial_monthly_contribution,
+                    monthly_contribution_increase_per_year=monthly_contribution_increases_per_year)
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+monthly_prices = get_monthly_stock_with_dividends(strategy.stock, strategy.start, strategy.end)
+strategy.passive_strategy(monthly_prices)
+# strategy.plot_passive_strategy(monthly_prices)
+
+exit_value = strategy.exit_values[-1]
+# print the results
+
+fig = strategy.plot_passive_strategy(monthly_prices)
+st.plotly_chart(fig, use_container_width=True)
+st.write(f"Exit value: {exit_value:.2f}")
