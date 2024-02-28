@@ -81,9 +81,11 @@ class Strategy:
                                 line=dict(color='green', width=2)))
 
         fig.update_layout(
-            title=f"Dollar-Cost Averaging Strategy: {self.start.year}-{self.end.year}",
+            # title=f"Dollar-Cost Averaging Strategy: {self.start.year}-{self.end.year}",
             xaxis_title="Année", yaxis_title="Valeur ($)",
-            legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.99),
+            legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
+            # Y bottom mus be at 0
+            yaxis=dict(range=[0, max(self.exit_values)*1.15]),
             # yaxis_type="log",
             font=dict(
                 family="Courier New, monospace",
