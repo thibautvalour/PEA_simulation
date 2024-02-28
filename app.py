@@ -10,12 +10,23 @@ from strategy import Strategy
 # Simulateur investissement S&P 500
 """
 
-starting_year = st.slider("Année de départ", 1994, 2024, 1994)
-ending_year = st.slider("Année de fin d\'investissement", 1994, 2024, 2024)
 
-initial_investment = st.number_input("Investment Initial", 0, 100_000, 1000)
-initial_monthly_contribution = st.number_input("Versement mensuelle", 0, 1000, 100)
-monthly_contribution_increases_per_year = st.number_input("Augmentation du versement par an", 0, 500, 100)
+# Menu
+col_start, col_end = st.columns(2)
+with col_start:
+    starting_year = st.number_input("Année de départ", 1994, 2024, 1994)
+with col_end:
+    ending_year = st.number_input("Année de fin d\'investissement", 1995, 2024, 2024)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    initial_investment = st.number_input("Investissement Initial", min_value=0, max_value=150_000, value=1_000)
+with col2:
+    initial_monthly_contribution = st.number_input("Versement mensuel", min_value=0, value=100)
+with col3:
+    monthly_contribution_increases_per_year = st.number_input("Augmentation du versement par an",
+                                                               min_value=0, max_value=500, value=0)
+
 
 stock = 'SPY'
 start = datetime.datetime(starting_year, 1, 1) 
