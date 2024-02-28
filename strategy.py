@@ -74,22 +74,21 @@ class Strategy:
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=monthly_prices.index, y=self.invested_cash_values,
-                                mode='lines', name="Total Cash Invested",
+                                mode='lines', name="Montant total investi",
                                 line=dict(color='royalblue', width=2, dash='dash')))
         fig.add_trace(go.Scatter(x=monthly_prices.index, y=self.exit_values,
-                                mode='lines', name="Net exit value",
+                                mode='lines', name="Valeur de sortie",
                                 line=dict(color='green', width=2)))
 
         fig.update_layout(
             title=f"Dollar-Cost Averaging Strategy: {self.start.year}-{self.end.year}",
-            xaxis_title="Year",
-            yaxis_title="Value ($)",
+            xaxis_title="Année", yaxis_title="Valeur ($)",
+            legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.99),
             # yaxis_type="log",
             font=dict(
                 family="Courier New, monospace",
-                size=14,
-                color="#7f7f7f"
-            ))
+                size=14, color="#7f7f7f"))
+
         # fig.show()
         return fig
 

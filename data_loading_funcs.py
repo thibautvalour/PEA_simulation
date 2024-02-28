@@ -7,6 +7,9 @@ def get_monthly_stock_with_dividends(stock, start, end, yearly_fee_rate=0.00153)
 
         if start < datetime.datetime(1993, 3, 19):
             raise ValueError('Start date must be later than 1993-03-19')
+        
+        if start > end:
+            raise ValueError('Start date must be earlier than end date')
 
         # Download historical prices and dividends
         stock_data = yf.download(stock, start=start, end=end)
