@@ -90,8 +90,7 @@ class Strategy:
             font=dict(
                 family="Courier New, monospace",
                 size=14, color="#7f7f7f"))
-
-        # fig.show()
+        
         return fig
 
 

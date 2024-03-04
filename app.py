@@ -1,15 +1,22 @@
-import altair as alt
+import os
+from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 import streamlit as st
 import datetime
+import altair as alt
+# from langchain.llms import OpenAI
+from openai import OpenAI
 
 from data_loading_funcs import get_monthly_stock_with_dividends
 from strategy import Strategy
+
+
+load_dotenv()  # take environment variables from .env.
+# api_key = os.getenv('OPENAI_API_KEY')
 """
 # Simulateur investissement S&P 500
 """
-
 
 # Menu
 col_start, col_end = st.columns(2)
@@ -50,3 +57,30 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.write(f"Montant total investi: {strategy.invested_cash_values[-1]:,.0f}€")
 st.write(f"Valeur nette de sortie: {strategy.exit_values[-1]:,.0f}€")
+
+# LLM Part
+
+st.title('🦜 LLM 🦜')
+
+client = OpenAI()
+
+def generate_response(input_text, conversation_history):
+    completion = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=conversation_history + [{"role": "user", "content": input_text}],
+        temperature=0.8,
+    )
+    return completion.choices[0].message.content
+
+# Initialize conversation_history in session state if it doesn't exist
+if 'conversation_history' not in st.session_state:
+    st.session_state.conversation_history = []
+
+with st.form('my_form'):
+    text = st.text_area('Enter text:', 'Hello world!')
+    submitted = st.form_submit_button('Submit')
+    if submitted:
+        response = generate_response(text, st.session_state.conversation_history)
+        st.session_state.conversation_history.append({"role": "user", "content": text})
+        st.session_state.conversation_history.append({"role": "assistant", "content": response})
+        st.info(response)
