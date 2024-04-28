@@ -32,7 +32,7 @@ with col2:
     initial_monthly_contribution = st.number_input("Versement mensuel", min_value=0, value=100)
 with col3:
     monthly_contribution_increases_per_year = st.number_input("Augmentation du versement par an",
-                                                               min_value=0, max_value=500, value=0)
+                                                               min_value=0, max_value=10_000, value=0)
 
 
 stock = 'SPY'
@@ -47,40 +47,44 @@ strategy = Strategy(stock, start, end, initial_cash=initial_investment,
 
 monthly_prices = get_monthly_stock_with_dividends(strategy.stock, strategy.start, strategy.end)
 strategy.passive_strategy(monthly_prices)
-# strategy.plot_passive_strategy(monthly_prices)
-
+invested_cash = strategy.invested_cash_values[-1]
 exit_value = strategy.exit_values[-1]
-# print the results
+
 
 fig = strategy.plot_passive_strategy(monthly_prices)
 st.plotly_chart(fig, use_container_width=True)
 
-st.write(f"Montant total investi: {strategy.invested_cash_values[-1]:,.0f}€")
-st.write(f"Valeur nette de sortie: {strategy.exit_values[-1]:,.0f}€")
+st.subheader(f"Montant total investi : **{invested_cash:,.0f} $**")
+st.subheader(f"Valeur nette de sortie : **{exit_value:,.0f} $**")
+st.write("")
+st.write("La stratégie d'investissement présentée ici est basée sur le principe du **Dollar Cost Averaging (DCA)** via un PEA. Cette méthode consiste à investir une somme fixe à intervalle régulier, dans notre cas tous les mois, dans un ETF suivant l'indice S&P 500.")
+st.write("L'ETF sélectionné réplique la performance des 500 plus grandes entreprises américaines cotées en bourse. La répartition sectorielle et géographique de l'indice est visualisable [ici](https://finviz.com/map.ashx).")
+st.write("Les montants indiqués tiennent compte des frais de gestion annuels de l'ETF (0,153%), ainsi que des frais d'entrée (3%) et de sortie (3%) de l'ETF, et de l'impôt sur les plus-values du PEA (17,2%). Les versements sur le PEA sont plaffonés à 150k. Tous les montants sont exprimés en dollars.")
+
 
 # LLM Part
 
-st.title('🦜 LLM 🦜')
+# st.title('🦜 LLM 🦜')
 
-client = OpenAI()
+# client = OpenAI()
 
-def generate_response(input_text, conversation_history):
-    completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=conversation_history + [{"role": "user", "content": input_text}],
-        temperature=0.8,
-    )
-    return completion.choices[0].message.content
+# def generate_response(input_text, conversation_history):
+#     completion = client.chat.completions.create(
+#         model="gpt-3.5-turbo",
+#         messages=conversation_history + [{"role": "user", "content": input_text}],
+#         temperature=0.8,
+#     )
+#     return completion.choices[0].message.content
 
-# Initialize conversation_history in session state if it doesn't exist
-if 'conversation_history' not in st.session_state:
-    st.session_state.conversation_history = []
+# # Initialize conversation_history in session state if it doesn't exist
+# if 'conversation_history' not in st.session_state:
+#     st.session_state.conversation_history = []
 
-with st.form('my_form'):
-    text = st.text_area('Enter text:', 'Hello world!')
-    submitted = st.form_submit_button('Submit')
-    if submitted:
-        response = generate_response(text, st.session_state.conversation_history)
-        st.session_state.conversation_history.append({"role": "user", "content": text})
-        st.session_state.conversation_history.append({"role": "assistant", "content": response})
-        st.info(response)
+# with st.form('my_form'):
+#     text = st.text_area('Enter text:', 'Hello world!')
+#     submitted = st.form_submit_button('Submit')
+#     if submitted:
+#         response = generate_response(text, st.session_state.conversation_history)
+#         st.session_state.conversation_history.append({"role": "user", "content": text})
+#         st.session_state.conversation_history.append({"role": "assistant", "content": response})
+#         st.info(response)
