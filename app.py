@@ -12,7 +12,7 @@ from data_loading_funcs import get_monthly_stock_with_dividends
 from strategy import Strategy
 
 
-load_dotenv()  # take environment variables from .env.
+# load_dotenv()  # take environment variables from .env.
 # api_key = os.getenv('OPENAI_API_KEY')
 """
 # Simulateur investissement S&P 500
