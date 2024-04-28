@@ -32,7 +32,7 @@ with col2:
     initial_monthly_contribution = st.number_input("Versement mensuel", min_value=0, value=100)
 with col3:
     monthly_contribution_increases_per_year = st.number_input("Augmentation du versement par an",
-                                                               min_value=0, max_value=10_000, value=0)
+                                                               min_value=0, max_value=10_000, value=10)
 
 
 stock = 'SPY'
@@ -58,8 +58,8 @@ st.subheader(f"Montant total investi : **{invested_cash:,.0f} $**")
 st.subheader(f"Valeur nette de sortie : **{exit_value:,.0f} $**")
 st.write("")
 st.write("La stratégie d'investissement présentée ici est basée sur le principe du **Dollar Cost Averaging (DCA)** via un PEA. Cette méthode consiste à investir une somme fixe à intervalle régulier, dans notre cas tous les mois, dans un ETF suivant l'indice S&P 500.")
-st.write("L'ETF sélectionné réplique la performance des 500 plus grandes entreprises américaines cotées en bourse. La répartition sectorielle et géographique de l'indice est visualisable [ici](https://finviz.com/map.ashx).")
-st.write("Les montants indiqués tiennent compte des frais de gestion annuels de l'ETF (0,153%), ainsi que des frais d'entrée (3%) et de sortie (3%) de l'ETF, et de l'impôt sur les plus-values du PEA (17,2%). Les versements sur le PEA sont plaffonés à 150k. Tous les montants sont exprimés en dollars.")
+st.write("L'ETF sélectionné réplique la performance des 500 plus grandes entreprises américaines cotées en bourse. La répartition sectorielle et géographique de l'indice est visualisable [ici](https://finviz.com/map.ashx). Les détails de fonctionnement de l'ETF reproduisant cet indice sont disponibles dans [ce document](https://doc.morningstar.com/Document/127c37e75a3252469991ea9641a63266.msdoc/?key=20e84eb11f96a433746b6c63912632d0da6d46c213a26195acbdbe8df5afb0d5).")
+st.write("Les montants indiqués tiennent compte des frais de gestion annuels de l'ETF (0,153%), ainsi que des frais d'entrée (3%) et de sortie (3%) de l'ETF, et de l'impôt sur les plus-values du PEA (17,2%). Les versements sur le PEA sont plaffonés à 160 500 $ (150k €). Tous les montants sont exprimés en dollars.")
 
 
 # LLM Part

@@ -7,7 +7,7 @@ class Strategy:
     def __init__(self, stock, start, end, 
                  initial_cash, initial_monthly_contribution, monthly_contribution_increase_per_year,
                  entry_fee=0.03, exit_fee=0.03, yearly_fee=0.00153,
-                 exit_taxe_rate_on_gains=0.172, limit_PEA=150_000):
+                 exit_taxe_rate_on_gains=0.172, limit_PEA=160_500):
         self.stock = stock
         self.start = start
         self.end = end
@@ -84,7 +84,6 @@ class Strategy:
             # title=f"Dollar-Cost Averaging Strategy: {self.start.year}-{self.end.year}",
             xaxis_title="Année", yaxis_title="Valeur ($)",
             legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
-            # Y bottom mus be at 0
             yaxis=dict(range=[0, max(self.exit_values)*1.15]),
             # yaxis_type="log",
             font=dict(
@@ -92,11 +91,6 @@ class Strategy:
                 size=14, color="#7f7f7f"))
         
         return fig
-
-
-        print(f"Total cash invested: ${self.invested_cash_values[-1]:,.0f}")
-        print(f"Net exit value: ${self.exit_values[-1]:,.0f}")
-        print(f"\nmax monthly contribution: ${max(self.montly_contributions):,.0f}")
 
     def run(self):
         monthly_prices = get_monthly_stock_with_dividends(self.stock, self.start, self.end,
