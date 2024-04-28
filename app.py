@@ -6,7 +6,7 @@ import streamlit as st
 import datetime
 import altair as alt
 # from langchain.llms import OpenAI
-from openai import OpenAI
+# from openai import OpenAI
 
 from data_loading_funcs import get_monthly_stock_with_dividends
 from strategy import Strategy
