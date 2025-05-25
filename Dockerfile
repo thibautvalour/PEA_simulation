@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (optional: add others if needed)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy your app code
 COPY . .
 
-# Expose the Streamlit port
+# Expose the port expected by Cloud Run
 EXPOSE 8080
 
-# Run the app
-CMD ["streamlit", "run", "app.py", "server.port=$PORT", "--server.enableCORS=false"]
+# Start the app, using the $PORT provided by Cloud Run
+CMD ["sh", "-c", "streamlit run app.py --server.port=$PORT --server.enableCORS=false"]
