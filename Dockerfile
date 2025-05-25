@@ -24,4 +24,5 @@ COPY . .
 EXPOSE 8080
 
 # Start the app, using the $PORT provided by Cloud Run
-CMD ["sh", "-c", "streamlit run app.py --server.port=$PORT --server.enableCORS=false"]
+CMD ["sh", "-c", "streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.enableCORS=false"]
+
