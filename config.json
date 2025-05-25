@@ -1,11 +1,14 @@
 {
-  "Global": {"exit_tax_rate":0.172,
-              "PEA_limit":160500},
-  "SPY": {"entry_fee":0.03,
-          "exit_fee":0.03,
-          "yearly_fee":0.00153,
-          "historic_start": "1993-03-19"
-        },
-  "MSCI_World":"",
+  "Global": {
+    "exit_tax_rate": 0.172,
+    "PEA_limit": 160500
+  },
+  "SPY": {
+    "entry_fee": 0.03,
+    "exit_fee": 0.03,
+    "yearly_fee": 0.00153,
+    "historic_start": "1993-03-19"
+  },
+  "MSCI_World": "",
   "MSCI_World_Momentum": ""
 }

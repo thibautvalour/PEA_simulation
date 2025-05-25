@@ -12,9 +12,9 @@ from src.strategy import DCAStrategy
 # Menu
 col_start, col_end = st.columns(2)
 with col_start:
-    starting_year = st.number_input("Année de départ", 1994, 2024, 1994)
+    starting_year = st.number_input("Année de départ", 1994, 2025, 1994)
 with col_end:
-    ending_year = st.number_input("Année de fin d'investissement", 1995, 2024, 2024)
+    ending_year = st.number_input("Année de fin d'investissement", 1995, 2025, 2024)
 
 col1, col2, col3 = st.columns(3)
 with col1:
