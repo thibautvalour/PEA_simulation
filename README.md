@@ -20,3 +20,5 @@ List of possible risk factors:
 - BNP Paribas failure
 
 - Tracking error
+
+Source des données : Yale University (http://www.econ.yale.edu/~shiller/data.htm)

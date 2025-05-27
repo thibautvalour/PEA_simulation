@@ -31,9 +31,15 @@ class DCAStrategy:
     def simulate_investment_strategy(self, monthly_prices):
 
         # Initialize portfolio
-        entry_price = monthly_prices.iloc[0]["Adjusted Close"].item() * (
-            1 + self.stock_params["entry_fee"]
-        )
+        try:
+            entry_price = to_scalar(monthly_prices.iloc[0]["Adjusted Close"]) * (
+                1 + self.stock_params["entry_fee"]
+            )
+        except:
+            entry_price = monthly_prices.iloc[0]["Adjusted Close"] * (
+                1 + self.stock_params["entry_fee"]
+            )
+
         shares_owned = self.initial_cash // entry_price
         available_cash = self.initial_cash - shares_owned * entry_price
 
@@ -60,7 +66,7 @@ class DCAStrategy:
 
             available_cash += current_monthly_contribution
 
-            current_price = row["Adjusted Close"].item() * (
+            current_price = to_scalar(row["Adjusted Close"]) * (
                 1 + self.stock_params["entry_fee"]
             )
             purchasable_shares = available_cash // current_price
@@ -77,12 +83,12 @@ class DCAStrategy:
                 )
 
             portfolio_value = (
-                shares_owned * row["Adjusted Close"].item() + available_cash
+                shares_owned * to_scalar(row["Adjusted Close"]) + available_cash
             )
             self.portfolio_values.append(portfolio_value)
 
             exit_value = self._compute_exit_value(
-                row["Adjusted Close"].item(), shares_owned, available_cash
+                to_scalar(row["Adjusted Close"]), shares_owned, available_cash
             )
             self.exit_values.append(exit_value)
 
@@ -132,3 +138,7 @@ class DCAStrategy:
         )
 
         return fig
+
+
+def to_scalar(x):
+    return x.item() if hasattr(x, "item") else x
