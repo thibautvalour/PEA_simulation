@@ -64,12 +64,11 @@ if st.button("Lancer la simulation"):
     strategy.simulate_investment_strategy(monthly_prices)
     invested_cash = strategy.total_invested_cash[-1]
     exit_value = strategy.exit_values[-1]
-
     fig = strategy.create_portfolio_visualization(monthly_prices)
-    st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader(f"Montant total investi : **{invested_cash:,.0f} $**")
     st.subheader(f"Valeur de sortie : **{exit_value:,.0f} $** (net d'impôts et frais)")
+    st.subheader(f"Montant total investi : **{invested_cash:,.0f} $**")
+    st.plotly_chart(fig, use_container_width=True)
 
     if invested_cash == params["Global"]["PEA_limit"]:
         st.warning("plafond PEA atteint durant la stratégie.")
