@@ -9,7 +9,17 @@ from src.config import params
 from src.price_loader import YFStockLoader, ShillerDataLoader
 from src.strategy import DCAStrategy
 
+# Hide Streamlit options on top right corner
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.title("Simulation PEA S&P500")
+
 # Menu
 col_start, col_end = st.columns(2)
 with col_start:
