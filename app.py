@@ -2,23 +2,40 @@
 # Simulateur investissement PEA
 """
 
-import streamlit as st
 import datetime
+import time
+import streamlit as st
+import plotly.graph_objects as go
 
 from src.config import params
-from src.price_loader import YFStockLoader, ShillerDataLoader
-from src.strategy import DCAStrategy
+from src.price_loader import (
+    YFStockLoader,
+    ShillerDataLoader,
+    GoldDataLoader,
+    LivretADataLoader,
+)
+from src.strategies import DCAStrategy, GoldDCAStrategy, LivretAStrategy
 
-# Hide Streamlit options on top right corner
+
+st.set_page_config(page_icon=":money_with_wings:")
+st.title("Simulation d'investissement récurrent (DCA)")
+
+# Hide Streamlit options and style buttons
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
+            
+            /* Style buttons to be blue by default */
+            .stButton > button {
+                background-color: #0066cc !important;
+                color: white !important;
+                border: none !important;
+            }
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-st.title("Simulation PEA S&P500")
 
 # Menu
 col_start, col_end = st.columns(2)
@@ -26,69 +43,165 @@ with col_start:
     starting_year = st.number_input("Année de départ (1871-2024)", 1871, 2025, 1994)
 with col_end:
     ending_year = st.number_input(
-        "Année de fin d'investissement (1872-2025)", starting_year, 2025, 2024
+        "Année de fin d'investissement (1872-2025)", 1871, 2025, 2024
     )
 
-col1, col2, col3 = st.columns(3)
-with col1:
+# Ensure the end year is after the start year
+if ending_year < starting_year:
+    st.error("L'année de fin doit être supérieure à l'année de départ.")
+
+col_fisc, col_init = st.columns(2)
+with col_fisc:
+    taxation_mode = st.selectbox(
+        "Fiscalité",
+        ["PEA", "Aucune"],
+        help="PEA : les plus-values sont taxées à 17,2 % jusqu’à 150 k€, puis à 30 % au-delà. Aucune : pas de taxation.",
+    )
+    # Set max investment based on taxation mode
+
+with col_init:
     initial_investment = st.number_input(
         "Investissement Initial (\$)",
         min_value=0,
-        max_value=params["Global"]["PEA_limit"],
         value=10_000,
     )
-with col2:
+
+
+col_monthly, col_yearly = st.columns(2)
+with col_monthly:
     initial_monthly_contribution = st.number_input(
         "Versement mensuel (\$)", min_value=0, value=100
     )
-with col3:
+with col_yearly:
     yearly_bump = st.number_input(
         "Chaque année, le versement mensuel augmente de :",
         min_value=0,
         max_value=10_000,
-        value=10,
+        value=0,
     )
 
 if st.button("Lancer la simulation"):
 
-    ticker = "SPY"
-    start = datetime.datetime(starting_year, 1, 1)
-    end = datetime.datetime(ending_year, 1, 1)
-    # # end = datetime.datetime.now() - datetime.timedelta(days=1) # Yesterday
+    with st.spinner("Calcul en cours..."):
 
-    strategy = DCAStrategy(
-        ticker,
-        start,
-        end,
-        initial_cash=initial_investment,
-        initial_monthly_contribution=initial_monthly_contribution,
-        yearly_bump=yearly_bump,
+        time.sleep(1)  # Simulate some processing time
+        start = datetime.datetime(starting_year, 1, 1)
+        end = datetime.datetime(ending_year, 1, 1)
+
+        # SPY Strategy
+        spy_strategy = DCAStrategy(
+            "SPY",
+            start,
+            end,
+            initial_cash=int(initial_investment),
+            initial_monthly_contribution=int(initial_monthly_contribution),
+            yearly_bump=int(yearly_bump),
+            taxation_mode=taxation_mode,
+        )
+        spy_monthly_prices = ShillerDataLoader(
+            start, end, include_dividends=True, yearly_fee=params["SPY"]["yearly_fee"]
+        ).get_monthly_prices()
+        spy_strategy.simulate_investment_strategy(spy_monthly_prices)
+
+        # Gold Strategy
+        gold_strategy = GoldDCAStrategy(
+            start,
+            end,
+            initial_cash=int(initial_investment),
+            initial_monthly_contribution=int(initial_monthly_contribution),
+            yearly_bump=int(yearly_bump),
+            taxation_mode=taxation_mode,
+        )
+        gold_monthly_prices = GoldDataLoader(
+            start, end, yearly_fee=params["Gold"]["yearly_fee"]
+        ).get_monthly_prices()
+        gold_strategy.simulate_investment_strategy(gold_monthly_prices)
+
+        # Livret A Strategy
+        livret_a_strategy = LivretAStrategy(
+            start,
+            end,
+            initial_cash=int(initial_investment),
+            initial_monthly_contribution=int(initial_monthly_contribution),
+            yearly_bump=int(yearly_bump),
+        )
+        livret_a_monthly_rates = LivretADataLoader(start, end).get_monthly_rates()
+        livret_a_strategy.simulate_investment_strategy(livret_a_monthly_rates)
+
+    # Create combined visualization
+    fig = go.Figure()
+
+    # Add invested cash baseline (same for both strategies)
+    fig.add_trace(
+        go.Scatter(
+            x=spy_monthly_prices.index,
+            y=spy_strategy.total_invested_cash,
+            mode="lines",
+            name="Montant total investi",
+            line=dict(color="royalblue", width=2, dash="dash"),
+        )
     )
 
-    # monthly_prices = YFStockLoader(ticker=ticker).get_monthly_prices(
-    #     start, end, include_dividends=True, yearly_fee=params[ticker]["yearly_fee"]
-    # )
-    monthly_prices = ShillerDataLoader(
-        start, end, include_dividends=True, yearly_fee=params[ticker]["yearly_fee"]
-    ).get_monthly_prices()
-    strategy.simulate_investment_strategy(monthly_prices)
-    invested_cash = strategy.total_invested_cash[-1]
-    exit_value = strategy.exit_values[-1]
-    fig = strategy.create_portfolio_visualization(monthly_prices)
+    # Add all three strategies
+    spy_strategy.add_to_plot(fig, spy_monthly_prices, "S&P500", "green")
+    gold_strategy.add_to_plot(fig, gold_monthly_prices, "Or", "gold")
+    livret_a_strategy.add_to_plot(fig, livret_a_monthly_rates, "Livret A", "lightblue")
 
-    st.subheader(f"Valeur de sortie : **{exit_value:,.0f} $** (net d'impôts et frais)")
-    st.subheader(f"Montant total investi : **{invested_cash:,.0f} $**")
-    st.plotly_chart(fig, use_container_width=True)
+    # Update layout
+    max_value = max(
+        max(spy_strategy.exit_values),
+        max(gold_strategy.exit_values),
+        max(livret_a_strategy.exit_values),
+    )
+    fig.update_layout(
+        xaxis_title="Année",
+        yaxis_title="Valeur ($)",
+        legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
+        yaxis=dict(range=[0, max_value * 1.15]),
+        font=dict(family="Courier New, monospace", size=14, color="#7f7f7f"),
+    )
 
-    if invested_cash == params["Global"]["PEA_limit"]:
-        st.warning("plafond PEA atteint durant la stratégie.")
-    st.write("")
-    st.write(
-        "La stratégie d'investissement présentée ici est basée sur le principe du **Dollar Cost Averaging (DCA)** via un PEA. Cette méthode consiste à investir une somme fixe à intervalle régulier, dans notre cas tous les mois, dans un ETF suivant l'indice S&P 500."
-    )
-    st.write(
-        "L'ETF sélectionné réplique la performance des 500 plus grandes entreprises américaines cotées en bourse. [La répartition sectorielle de l'indice est visualisable ici](https://finviz.com/map.ashx). [Les détails de fonctionnement de l'ETF reproduisant cet indice sont disponibles ici](https://doc.morningstar.com/Document/127c37e75a3252469991ea9641a63266.msdoc/?key=20e84eb11f96a433746b6c63912632d0da6d46c213a26195acbdbe8df5afb0d5)."
-    )
-    st.write(
-        "Les montants indiqués tiennent compte des frais de gestion annuels de l'ETF (0,153%), ainsi que des frais d'entrée (3%) et de sortie (3%) de l'ETF, et de l'impôt sur les plus-values du PEA (17,2%). Les versements sur le PEA sont plaffonés à 160 500 \$ (150k €). Tous les montants sont exprimés en \$ USD"
-    )
+    # Display results
+    total_invested = spy_strategy.total_invested_cash[-1]
+    spy_exit = spy_strategy.exit_values[-1]
+    gold_exit = gold_strategy.exit_values[-1]
+    livret_a_exit = livret_a_strategy.exit_values[-1]
+
+    st.metric("Montant investi", f"{total_invested:,.0f} $")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.subheader("📈 S&P500")
+        st.metric("Valeur de sortie", f"{spy_exit:,.0f} $")
+        spy_return = ((spy_exit / total_invested) - 1) * 100
+        st.metric("Rendement total", f"{spy_return:.1f}%")
+
+    with col2:
+        st.subheader("🥇 Or")
+        st.metric("Valeur de sortie", f"{gold_exit:,.0f} $")
+        gold_return = ((gold_exit / total_invested) - 1) * 100
+        st.metric("Rendement total", f"{gold_return:.1f}%")
+
+    with col3:
+        st.subheader("🏦 Livret A", help="Aucune fiscalité")
+        st.metric("Valeur de sortie", f"{livret_a_exit:,.0f} $")
+        livret_a_return = ((livret_a_exit / total_invested) - 1) * 100
+        st.metric("Rendement total", f"{livret_a_return:.1f}%")
+
+    st.plotly_chart(fig)
+
+    # Show warnings based on taxation mode
+    if taxation_mode == "PEA" and (total_invested > params["Global"]["PEA_limit"]):
+        st.warning(
+            "Plafond PEA atteint durant la stratégie. Les plus-values des investissements au-delà de ce montant ont été taxées à 30%."
+        )
+
+    # Simple taxation explanation
+    if taxation_mode == "PEA":
+        st.caption(
+            f"Fiscalité : {params['Global']['exit_tax_rate']*100:.1f}% sur les plus-values des placements jusqu'à {params['Global']['PEA_limit']:,}$, puis {params['Global']['taxable_account_tax_rate']*100:.0f}% au-delà. Livret A sans fiscalité."
+        )
+    else:
+        st.caption(
+            "Fiscalité : Aucune taxe sur les plus-values. Livret A sans fiscalité."
+        )

@@ -170,6 +170,111 @@ def validate_dates(start: datetime, end: datetime):
         raise ValueError("Start date must be earlier than end date")
 
 
+class GoldDataLoader:
+    def __init__(
+        self,
+        start: datetime,
+        end: datetime,
+        yearly_fee: float = params["Gold"]["yearly_fee"],
+        normalize: bool = True,
+    ):
+        self.file_path = "data/monthly_gold_prices.csv"
+        self.start = start
+        self.end = end
+        self.yearly_fee = yearly_fee
+        self.normalize = normalize
+        validate_dates(start, end)
+
+    def get_monthly_prices(self) -> pd.DataFrame:
+        monthly_prices = self._load_and_process_data()
+        if self.yearly_fee > 0:
+            monthly_prices = apply_fee_impact(monthly_prices, self.yearly_fee)
+        if self.normalize:
+            # Divide by the last value to keep a purchasable price
+            monthly_prices["Adjusted Close"] /= monthly_prices["Adjusted Close"].iloc[
+                -1
+            ]
+        return monthly_prices
+
+    def _load_and_process_data(self) -> pd.DataFrame:
+        df = pd.read_csv(self.file_path)
+
+        # Convert Date column to datetime
+        df["Date"] = pd.to_datetime(df["Date"], format="%Y-%m")
+
+        # Rename columns to match expected format
+        df = df.rename(columns={"Price": "Close"}).set_index("Date").sort_index()
+
+        # Filter date range (match ShillerDataLoader logic)
+        df = df[(df.index > self.start) & (df.index < self.end)]
+
+        # Gold doesn't have dividends, so create Adjusted Close column
+        df["Adjusted Close"] = df["Close"]
+
+        return df[["Close", "Adjusted Close"]]
+
+
+class LivretADataLoader:
+    def __init__(
+        self,
+        start: datetime,
+        end: datetime,
+        normalize: bool = True,
+    ):
+        self.file_path = "data/livret_A_taux.csv"
+        self.start = start
+        self.end = end
+        self.normalize = normalize
+        validate_dates(start, end)
+
+    def get_monthly_rates(self) -> pd.DataFrame:
+        """Get monthly interest rates for Livret A"""
+        monthly_rates = self._load_and_process_data()
+        if self.normalize:
+            # For Livret A, we'll create a cumulative value starting at 1
+            monthly_rates["Adjusted Close"] = self._compute_cumulative_value(
+                monthly_rates
+            )
+            # Normalize to last value like other assets
+            monthly_rates["Adjusted Close"] /= monthly_rates["Adjusted Close"].iloc[-1]
+        return monthly_rates
+
+    def _load_and_process_data(self) -> pd.DataFrame:
+        df = pd.read_csv(self.file_path)
+
+        # Convert Date column to datetime
+        df["time_period_start"] = pd.to_datetime(
+            df["time_period_start"], format="%Y-%m-%d"
+        )
+
+        # Convert French decimal format to float (comma to dot)
+        df["rate"] = df["rate"].str.replace(",", ".").astype(float)
+
+        # Convert annual rate percentage to monthly decimal
+        df["monthly_rate"] = (1 + df["rate"] / 100) ** (1 / 12) - 1
+
+        # Rename and set index
+        df = df.rename(columns={"time_period_start": "Date", "rate": "Annual_Rate"})
+        df = df.set_index("Date").sort_index()
+
+        # Filter date range (match other loaders)
+        df = df[(df.index > self.start) & (df.index < self.end)]
+
+        return df[["Annual_Rate", "monthly_rate"]]
+
+    def _compute_cumulative_value(self, monthly_rates: pd.DataFrame) -> pd.Series:
+        """Compute cumulative value of 1€ invested with monthly compound interest"""
+        cumulative_value = pd.Series(index=monthly_rates.index, dtype=float)
+        cumulative_value.iloc[0] = 1.0
+
+        for i in range(1, len(monthly_rates)):
+            prev_value = cumulative_value.iloc[i - 1]
+            monthly_rate = monthly_rates["monthly_rate"].iloc[i - 1]
+            cumulative_value.iloc[i] = prev_value * (1 + monthly_rate)
+
+        return cumulative_value
+
+
 def apply_fee_impact(monthly_prices: pd.DataFrame, yearly_fee: float) -> pd.DataFrame:
     """Apply fee impact to monthly prices"""
 

@@ -1,14 +1,27 @@
 {
   "Global": {
     "exit_tax_rate": 0.172,
+    "taxable_account_tax_rate": 0.30,
     "PEA_limit": 160500
   },
   "SPY": {
     "entry_fee": 0.03,
     "exit_fee": 0.03,
     "yearly_fee": 0.00153,
-    "historic_start": "1993-03-19"
+    "historic_start": "1872-01-01"
   },
   "MSCI_World": "",
-  "MSCI_World_Momentum": ""
+  "MSCI_World_Momentum": "",
+  "Gold": {
+    "entry_fee": 0,
+    "exit_fee": 0,
+    "yearly_fee": 0.0025,
+    "historic_start": "1833-01-01"
+  },
+  "Livret A": {
+    "entry_fee": 0,
+    "exit_fee": 0,
+    "yearly_fee": 0,
+    "historic_start": "1966-01-01"
+  }
 }
