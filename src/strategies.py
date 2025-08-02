@@ -176,7 +176,7 @@ class DCAStrategy:
         return pea_exit + taxable_exit
 
     def _apply_tax(self, value, gain, invested, account_type):
-        if gain <= 0 or self.taxation_mode == "Aucune fiscalité":
+        if gain <= 0 or self.taxation_mode == "Aucune":
             return value
 
         if account_type == "pea":
