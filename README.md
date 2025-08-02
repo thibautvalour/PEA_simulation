@@ -21,4 +21,6 @@ List of possible risk factors:
 
 - Tracking error
 
-Source des données : Yale University (http://www.econ.yale.edu/~shiller/data.htm)
+Source des données : 
+- S&P500: Yale University (http://www.econ.yale.edu/~shiller/data.htm)
+- Gold: World Bank https://datahub.io/core/gold-prices
