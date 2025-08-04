@@ -1,20 +1,21 @@
 """Backtester for Dollar-Cost Averaging (DCA) investment strategies"""
 
-# pylint: disable=import-error
-
 import datetime
 import time
 import streamlit as st
 import plotly.graph_objects as go
 
-from src.config import params
+from PEA_simulation.src.load_parameters import params
 from src.price_loader import (
     ShillerDataLoader,
     GoldDataLoader,
     LivretADataLoader,
 )
 from src.strategies import DCAStrategy, GoldDCAStrategy, LivretAStrategy
-from src.utils import compute_global_return, compute_geometric_mean_return
+from PEA_simulation.src.math_utils import (
+    compute_global_return,
+    compute_geometric_mean_return,
+)
 
 
 st.title("Simulation d'investissement récurrent (DCA)")

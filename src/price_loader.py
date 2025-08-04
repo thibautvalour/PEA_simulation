@@ -1,29 +1,43 @@
+"""Price data loaders for various financial instruments.
+
+This module provides data loaders for:
+- Shiller stock market data
+- Yahoo Finance stock data
+- Gold prices
+- Livret A savings account rates
+"""
+
 from datetime import datetime
 import pandas as pd
 import yfinance as yf
 
-from src.config import params
-from src.utils import apply_fee_impact
+from PEA_simulation.src.load_parameters import params
+from PEA_simulation.src.math_utils import apply_fee_impact
 
 
 class ShillerDataLoader:
+    """Loads and processes Shiller stock market data with dividend reinvestment."""
+
     def __init__(
         self,
         start: datetime,
         end: datetime,
+        *,
         include_dividends: bool = True,
-        yearly_fee: float = params["SPY"]["yearly_fee"],
+        yearly_fee: float = None,
         normalize: bool = True,
     ):
+        """Initialize Shiller data loader with configuration parameters."""
         self.file_path = "data/shillerdata.xls"
         self.start = start
         self.end = end
         self.include_dividends = include_dividends
-        self.yearly_fee = yearly_fee
+        self.yearly_fee = yearly_fee or params["SPY"]["yearly_fee"]
         self.normalize = normalize
         validate_dates(start, end)
 
     def get_monthly_prices(self) -> pd.DataFrame:
+        """Load and process Shiller data with optional dividend reinvestment and fees."""
         monthly_prices = self._load_and_process_data()
         if self.include_dividends:
             monthly_prices = self._compute_dividend_reinvestment(monthly_prices)
@@ -37,6 +51,7 @@ class ShillerDataLoader:
         return monthly_prices
 
     def _load_and_process_data(self) -> pd.DataFrame:
+        """Load raw Shiller data from Excel file and process dates/columns."""
         df = pd.read_excel("data/shillerdata.xls", sheet_name="Data", skiprows=7)
         df = df.drop(df.index[-1])
 
@@ -69,26 +84,31 @@ class ShillerDataLoader:
 
         Returns a new column 'Adjusted_Close' which reflects reinvested dividends.
         """
-        df = monthly_prices.copy()
-        adjusted_close = df["Close"].copy()
+        data_frame = monthly_prices.copy()
+        adjusted_close = data_frame["Close"].copy()
 
-        for i in range(1, len(df)):
-            prev_date = df.index[i - 1]
-            dividend = df.loc[prev_date, "Dividends"]
+        for i in range(1, len(data_frame)):
+            prev_date = data_frame.index[i - 1]
+            dividend = data_frame.loc[prev_date, "Dividends"]
             prev_close = adjusted_close.loc[prev_date]
             adjustment_factor = 1 + dividend / prev_close
             adjusted_close.iloc[i:] *= adjustment_factor
 
-        df["Adjusted Close"] = adjusted_close
-        return df[["Close", "Dividends", "Adjusted Close"]]
+        data_frame["Adjusted Close"] = adjusted_close
+        return data_frame[["Close", "Dividends", "Adjusted Close"]]
 
 
 class YFStockLoader:
-    """Class to get stock prices with some preprocessing"""
+    """Loads stock prices from Yahoo Finance with preprocessing options."""
 
     def __init__(self, ticker: str):
+        """Initialize with stock ticker symbol."""
         self.ticker = ticker
         self.stock = yf.Ticker(ticker)
+
+    def get_ticker_info(self):
+        """Get basic ticker information."""
+        return self.ticker
 
     def get_monthly_prices(
         self,
@@ -172,21 +192,25 @@ def validate_dates(start: datetime, end: datetime):
 
 
 class GoldDataLoader:
+    """Loads historical gold price data from CSV file."""
+
     def __init__(
         self,
         start: datetime,
         end: datetime,
-        yearly_fee: float = params["Gold"]["yearly_fee"],
+        yearly_fee: float = None,
         normalize: bool = True,
     ):
+        """Initialize gold data loader with date range and options."""
         self.file_path = "data/monthly_gold_prices.csv"
         self.start = start
         self.end = end
-        self.yearly_fee = yearly_fee
+        self.yearly_fee = yearly_fee or params["Gold"]["yearly_fee"]
         self.normalize = normalize
         validate_dates(start, end)
 
     def get_monthly_prices(self) -> pd.DataFrame:
+        """Load and process gold price data with optional fees and normalization."""
         monthly_prices = self._load_and_process_data()
         if self.yearly_fee > 0:
             monthly_prices = apply_fee_impact(monthly_prices, self.yearly_fee)
@@ -198,30 +222,42 @@ class GoldDataLoader:
         return monthly_prices
 
     def _load_and_process_data(self) -> pd.DataFrame:
-        df = pd.read_csv(self.file_path)
+        """Load raw gold price data from CSV and process format."""
+        data_frame = pd.read_csv(self.file_path)
 
         # Convert Date column to datetime
-        df["Date"] = pd.to_datetime(df["Date"], format="%Y-%m")
+        data_frame["Date"] = pd.to_datetime(data_frame["Date"], format="%Y-%m")
 
         # Rename columns to match expected format
-        df = df.rename(columns={"Price": "Close"}).set_index("Date").sort_index()
+        data_frame = (
+            data_frame.rename(columns={"Price": "Close"}).set_index("Date").sort_index()
+        )
 
         # Filter date range (match ShillerDataLoader logic)
-        df = df[(df.index > self.start) & (df.index < self.end)]
+        data_frame = data_frame[
+            (data_frame.index > self.start) & (data_frame.index < self.end)
+        ]
 
         # Gold doesn't have dividends, so create Adjusted Close column
-        df["Adjusted Close"] = df["Close"]
+        data_frame["Adjusted Close"] = data_frame["Close"]
 
-        return df[["Close", "Adjusted Close"]]
+        return data_frame[["Close", "Adjusted Close"]]
+
+    def get_file_path(self):
+        """Get the file path for the data source."""
+        return self.file_path
 
 
 class LivretADataLoader:
+    """Loads French Livret A savings account interest rates."""
+
     def __init__(
         self,
         start: datetime,
         end: datetime,
         normalize: bool = True,
     ):
+        """Initialize Livret A data loader with date range."""
         self.file_path = "data/livret_A_taux.csv"
         self.start = start
         self.end = end
@@ -243,27 +279,32 @@ class LivretADataLoader:
         return monthly_prices
 
     def _load_and_process_data(self) -> pd.DataFrame:
-        df = pd.read_csv(self.file_path)
+        """Load and process Livret A interest rate data from CSV."""
+        data_frame = pd.read_csv(self.file_path)
 
         # Convert Date column to datetime
-        df["time_period_start"] = pd.to_datetime(
-            df["time_period_start"], format="%Y-%m-%d"
+        data_frame["time_period_start"] = pd.to_datetime(
+            data_frame["time_period_start"], format="%Y-%m-%d"
         )
 
         # Convert French decimal format to float (comma to dot)
-        df["rate"] = df["rate"].str.replace(",", ".").astype(float)
+        data_frame["rate"] = data_frame["rate"].str.replace(",", ".").astype(float)
 
         # Convert annual rate percentage to monthly decimal
-        df["monthly_rate"] = (1 + df["rate"] / 100) ** (1 / 12) - 1
+        data_frame["monthly_rate"] = (1 + data_frame["rate"] / 100) ** (1 / 12) - 1
 
         # Rename and set index
-        df = df.rename(columns={"time_period_start": "Date", "rate": "Annual_Rate"})
-        df = df.set_index("Date").sort_index()
+        data_frame = data_frame.rename(
+            columns={"time_period_start": "Date", "rate": "Annual_Rate"}
+        )
+        data_frame = data_frame.set_index("Date").sort_index()
 
         # Filter date range (match other loaders)
-        df = df[(df.index > self.start) & (df.index < self.end)]
+        data_frame = data_frame[
+            (data_frame.index > self.start) & (data_frame.index < self.end)
+        ]
 
-        return df[["Annual_Rate", "monthly_rate"]]
+        return data_frame[["Annual_Rate", "monthly_rate"]]
 
     def _compute_cumulative_value(self, monthly_rates: pd.DataFrame) -> pd.Series:
         """Compute cumulative value of 1€ invested with monthly compound interest"""
@@ -276,3 +317,7 @@ class LivretADataLoader:
             cumulative_value.iloc[i] = prev_value * (1 + monthly_rate)
 
         return cumulative_value
+
+    def get_date_range(self):
+        """Get the date range covered by this data loader."""
+        return self.start, self.end

@@ -4,13 +4,17 @@ A Meta-class defines the Dollar-Cost Averaging (DCA) strategy,
 Specific implementations enable SP500, Gold, and even Livret A performance simulation.
 """
 
+# pylint: disable=too-many-instance-attributes, too-many-arguments
+
 from datetime import datetime
 import plotly.graph_objects as go
 
-from src.config import params
+from PEA_simulation.src.load_parameters import params
 
 
 class DCAStrategy:
+    """Dollar-Cost Averaging investment strategy simulator."""
+
     def __init__(
         self,
         ticker: str,
@@ -21,6 +25,7 @@ class DCAStrategy:
         yearly_bump: int,
         taxation_mode: str = "PEA",
     ):
+        """Initialize DCA strategy with investment parameters."""
         self.ticker = ticker
         self.start = start
         self.end = end
@@ -29,6 +34,7 @@ class DCAStrategy:
         self.yearly_bump = yearly_bump
         self.taxation_mode = taxation_mode
         self.params = params[ticker]
+        self.date_index = None
 
         self.monthly_contributions = []
         self.total_invested_cash = []
@@ -39,7 +45,10 @@ class DCAStrategy:
         self.pea_shares = []
         self.taxable_shares = []
 
+    # pylint: disable=too-many-locals
     def simulate_investment_strategy(self, monthly_prices):
+        """Simulate the DCA investment strategy over the given price history."""
+        self.date_index = monthly_prices.index
         entry_price = self._get_entry_price(monthly_prices)
         pea_cash, taxable_cash, pea_shares, taxable_shares = self._init_accounts(
             entry_price
@@ -51,7 +60,7 @@ class DCAStrategy:
                 monthly_contrib += self.yearly_bump
 
             pea_contrib, taxable_contrib = self._split_contribution(
-                monthly_contrib, idx, pea_cash, taxable_cash
+                monthly_contrib, pea_cash, taxable_cash
             )
             pea_cash += pea_contrib
             taxable_cash += taxable_contrib
@@ -66,7 +75,7 @@ class DCAStrategy:
             pea_cash -= new_pea_shares * price
             taxable_cash -= new_taxable_shares * price
 
-            self._track_values(monthly_contrib, pea_contrib, taxable_contrib, idx)
+            self._track_values(monthly_contrib, pea_contrib, taxable_contrib)
 
             stock_price = to_scalar(row["Adjusted Close"])
             portfolio_val = self._calc_portfolio_value(
@@ -80,16 +89,18 @@ class DCAStrategy:
             self.exit_values.append(exit_val)
 
     def _get_entry_price(self, monthly_prices):
+        """Get the initial entry price for the investment."""
         try:
             return to_scalar(monthly_prices.iloc[0]["Adjusted Close"]) * (
                 1 + self.params["entry_fee"]
             )
-        except:
+        except (KeyError, IndexError, AttributeError):
             return monthly_prices.iloc[0]["Adjusted Close"] * (
                 1 + self.params["entry_fee"]
             )
 
     def _init_accounts(self, entry_price):
+        """Initialize PEA and taxable account balances."""
         if self.taxation_mode == "PEA":
             pea_initial = min(self.initial_cash, params["Global"]["PEA_limit"])
             taxable_initial = self.initial_cash - pea_initial
@@ -104,7 +115,8 @@ class DCAStrategy:
 
         return pea_cash, taxable_cash, pea_shares, taxable_shares
 
-    def _split_contribution(self, monthly_contrib, idx, pea_cash, taxable_cash):
+    def _split_contribution(self, monthly_contrib, _pea_cash, _taxable_cash):
+        """Split monthly contribution between PEA and taxable accounts."""
         if self.taxation_mode != "PEA":
             return 0, monthly_contrib
 
@@ -116,11 +128,13 @@ class DCAStrategy:
         return pea_contrib, monthly_contrib - pea_contrib
 
     def _buy_shares(self, price, pea_cash, taxable_cash):
+        """Calculate number of shares to buy with available cash."""
         if price <= 0:
             return 0, 0
         return pea_cash // price, taxable_cash // price
 
-    def _track_values(self, monthly_contrib, pea_contrib, taxable_contrib, idx):
+    def _track_values(self, monthly_contrib, pea_contrib, taxable_contrib):
+        """Track investment values over time."""
         self.monthly_contributions.append(monthly_contrib)
 
         # Add initial cash to first calculation
@@ -158,11 +172,14 @@ class DCAStrategy:
     def _calc_portfolio_value(
         self, stock_price, pea_shares, taxable_shares, pea_cash, taxable_cash
     ):
+        """Calculate current portfolio value."""
         return (pea_shares + taxable_shares) * stock_price + pea_cash + taxable_cash
 
+    # pylint: disable=too-many-arguments
     def _calc_exit_value(
         self, stock_price, pea_shares, taxable_shares, pea_cash, taxable_cash, idx
     ):
+        """Calculate exit value after taxes and fees."""
         sell_price = stock_price * (1 - self.params["exit_fee"])
 
         pea_value = pea_shares * sell_price + pea_cash
@@ -182,6 +199,7 @@ class DCAStrategy:
         return pea_exit + taxable_exit
 
     def _apply_tax(self, value, gain, invested, account_type):
+        """Apply tax to investment gains based on account type."""
         if gain <= 0 or self.taxation_mode == "Aucune":
             return value
 
@@ -192,43 +210,24 @@ class DCAStrategy:
 
         return gain * (1 - tax_rate) + invested
 
-    def add_to_plot(self, fig, monthly_prices, strategy_name=None, color="green"):
+    def add_to_plot(self, fig, strategy_name=None, color="green"):
+        """Add strategy performance to plotly figure."""
         name = strategy_name or f"Valeur de sortie ({self.ticker})"
         fig.add_trace(
             go.Scatter(
-                x=monthly_prices.index,
+                x=self.date_index,
                 y=self.exit_values,
                 mode="lines",
                 name=name,
-                line=dict(color=color, width=2),
+                line={"color": color, "width": 2},
             )
-        )
-        return fig
-
-    def create_portfolio_visualization(self, monthly_prices):
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=monthly_prices.index,
-                y=self.total_invested_cash,
-                mode="lines",
-                name="Montant total investi",
-                line=dict(color="royalblue", width=2, dash="dash"),
-            )
-        )
-        fig = self.add_to_plot(fig, monthly_prices, color="green")
-
-        fig.update_layout(
-            xaxis_title="Année",
-            yaxis_title="Valeur ($)",
-            legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
-            yaxis=dict(range=[0, max(self.exit_values) * 1.15]),
-            font=dict(family="Courier New, monospace", size=14, color="#7f7f7f"),
         )
         return fig
 
 
 class GoldDCAStrategy(DCAStrategy):
+    """Specialized DCA strategy for gold investments."""
+
     def __init__(
         self,
         start: datetime,
@@ -236,8 +235,10 @@ class GoldDCAStrategy(DCAStrategy):
         initial_cash: int,
         initial_monthly_contribution: int,
         yearly_bump: int,
+        *,
         taxation_mode: str = "PEA",
     ):
+        """Initialize gold DCA strategy."""
         super().__init__(
             "Gold",
             start,
@@ -248,12 +249,15 @@ class GoldDCAStrategy(DCAStrategy):
             taxation_mode,
         )
 
-    def add_to_plot(self, fig, monthly_prices, strategy_name=None, color="gold"):
+    def add_to_plot(self, fig, strategy_name=None, color="gold"):
+        """Add gold strategy performance to plotly figure."""
         name = strategy_name or "Valeur de sortie (Or)"
-        return super().add_to_plot(fig, monthly_prices, name, color)
+        return super().add_to_plot(fig, name, color)
 
 
 class LivretAStrategy:
+    """Livret A savings account investment strategy simulator."""
+
     def __init__(
         self,
         start: datetime,
@@ -262,12 +266,14 @@ class LivretAStrategy:
         initial_monthly_contribution: int,
         yearly_bump: int,
     ):
+        """Initialize Livret A strategy parameters."""
         self.ticker = "Livret A"
         self.start = start
         self.end = end
         self.initial_cash = initial_cash
         self.initial_monthly_contribution = initial_monthly_contribution
         self.yearly_bump = yearly_bump
+        self.date_index = None
 
         self.monthly_contributions = []
         self.total_invested_cash = []
@@ -275,6 +281,8 @@ class LivretAStrategy:
         self.exit_values = []
 
     def simulate_investment_strategy(self, monthly_prices):
+        """Simulate Livret A investment strategy."""
+        self.date_index = monthly_prices.index
         cash = float(self.initial_cash)
         shares = 0
         monthly_contrib = self.initial_monthly_contribution
@@ -307,41 +315,21 @@ class LivretAStrategy:
             self.portfolio_values.append(portfolio_value)
             self.exit_values.append(portfolio_value)
 
-    def add_to_plot(self, fig, monthly_rates, strategy_name=None, color="lightblue"):
+    def add_to_plot(self, fig, strategy_name=None, color="lightblue"):
+        """Add Livret A performance to plotly figure."""
         name = strategy_name or "Livret A"
         fig.add_trace(
             go.Scatter(
-                x=monthly_rates.index,
+                x=self.date_index,
                 y=self.exit_values,
                 mode="lines",
                 name=name,
-                line=dict(color=color, width=2),
+                line={"color": color, "width": 2},
             )
         )
         return fig
 
-    def create_portfolio_visualization(self, monthly_prices):
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=monthly_prices.index,
-                y=self.total_invested_cash,
-                mode="lines",
-                name="Montant total investi",
-                line=dict(color="royalblue", width=2, dash="dash"),
-            )
-        )
-        fig = self.add_to_plot(fig, monthly_prices, color="lightblue")
 
-        fig.update_layout(
-            xaxis_title="Année",
-            yaxis_title="Valeur ($)",
-            legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
-            yaxis=dict(range=[0, max(self.exit_values) * 1.15]),
-            font=dict(family="Courier New, monospace", size=14, color="#7f7f7f"),
-        )
-        return fig
-
-
-def to_scalar(x):
-    return x.item() if hasattr(x, "item") else x
+def to_scalar(value):
+    """Convert pandas/numpy value to Python scalar."""
+    return value.item() if hasattr(value, "item") else value

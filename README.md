@@ -26,3 +26,9 @@ Simulates long-term investment strategies using historical data (1871-2025) with
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## TODO
+
+- Livret A depuis 1830
+- Ajouter MSCI World et Nasdaq
+- Options "pire scenario" & "meilleur scenario"
