@@ -11,8 +11,8 @@ from datetime import datetime
 import pandas as pd
 import yfinance as yf
 
-from PEA_simulation.src.load_parameters import params
-from PEA_simulation.src.math_utils import apply_fee_impact
+from src.load_parameters import params
+from src.math_utils import apply_fee_impact
 
 
 class ShillerDataLoader:

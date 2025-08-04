@@ -9,7 +9,7 @@ Specific implementations enable SP500, Gold, and even Livret A performance simul
 from datetime import datetime
 import plotly.graph_objects as go
 
-from PEA_simulation.src.load_parameters import params
+from src.load_parameters import params
 
 
 class DCAStrategy:

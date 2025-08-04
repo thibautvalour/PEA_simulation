@@ -5,14 +5,14 @@ import time
 import streamlit as st
 import plotly.graph_objects as go
 
-from PEA_simulation.src.load_parameters import params
+from src.load_parameters import params
 from src.price_loader import (
     ShillerDataLoader,
     GoldDataLoader,
     LivretADataLoader,
 )
 from src.strategies import DCAStrategy, GoldDCAStrategy, LivretAStrategy
-from PEA_simulation.src.math_utils import (
+from src.math_utils import (
     compute_global_return,
     compute_geometric_mean_return,
 )
