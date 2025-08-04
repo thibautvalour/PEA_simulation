@@ -1,6 +1,6 @@
-"""
-# Simulateur investissement PEA
-"""
+"""Backtester for Dollar-Cost Averaging (DCA) investment strategies"""
+
+# pylint: disable=import-error
 
 import datetime
 import time
@@ -22,7 +22,7 @@ st.title("Simulation d'investissement récurrent (DCA)")
 st.set_page_config(page_icon=":money_with_wings:")
 
 # Hide Streamlit options and style buttons
-hide_streamlit_style = """
+HIDE_STREAMLIT_STYLE = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
@@ -36,7 +36,7 @@ hide_streamlit_style = """
             }
             </style>
             """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(HIDE_STREAMLIT_STYLE, unsafe_allow_html=True)
 
 # Menu
 col_start, col_end = st.columns(2)
@@ -57,12 +57,13 @@ with col_fisc:
     taxation_mode = st.selectbox(
         "Fiscalité",
         ["PEA", "Aucune"],
-        help="PEA : les plus-values sont taxées à 17,2 % jusqu’à 150 k€, puis à 30 % au-delà. Aucune : pas de taxation.",
+        help="PEA : les plus-values sont taxées à 17,2 % jusqu'à 150 k€, "
+        "puis à 30 % au-delà. Aucune : pas de taxation.",
     )
 
 with col_init:
     initial_investment = st.number_input(
-        "Investissement Initial (\$)",
+        "Investissement Initial ($)",
         min_value=0,
         value=10_000,
     )
@@ -71,7 +72,7 @@ with col_init:
 col_monthly, col_yearly = st.columns(2)
 with col_monthly:
     initial_monthly_contribution = st.number_input(
-        "Versement mensuel (\$)", min_value=0, value=100
+        "Versement mensuel ($)", min_value=0, value=100
     )
 with col_yearly:
     yearly_bump = st.number_input(
@@ -96,9 +97,9 @@ if st.button("Lancer la simulation"):
             "SPY",
             start,
             end,
-            initial_cash=int(initial_investment),
-            initial_monthly_contribution=int(initial_monthly_contribution),
-            yearly_bump=int(yearly_bump),
+            initial_cash=initial_investment,
+            initial_monthly_contribution=initial_monthly_contribution,
+            yearly_bump=yearly_bump,
             taxation_mode=taxation_mode,
         )
         spy_monthly_prices = ShillerDataLoader(
@@ -110,9 +111,9 @@ if st.button("Lancer la simulation"):
         gold_strategy = GoldDCAStrategy(
             start,
             end,
-            initial_cash=int(initial_investment),
-            initial_monthly_contribution=int(initial_monthly_contribution),
-            yearly_bump=int(yearly_bump),
+            initial_cash=initial_investment,
+            initial_monthly_contribution=initial_monthly_contribution,
+            yearly_bump=yearly_bump,
             taxation_mode=taxation_mode,
         )
         gold_monthly_prices = GoldDataLoader(
@@ -125,12 +126,16 @@ if st.button("Lancer la simulation"):
             livret_a_strategy = LivretAStrategy(
                 start,
                 end,
-                initial_cash=int(initial_investment),
-                initial_monthly_contribution=int(initial_monthly_contribution),
-                yearly_bump=int(yearly_bump),
+                initial_cash=initial_investment,
+                initial_monthly_contribution=initial_monthly_contribution,
+                yearly_bump=yearly_bump,
             )
-            livret_a_monthly_rates = LivretADataLoader(start, end).get_monthly_rates()
-            livret_a_strategy.simulate_investment_strategy(livret_a_monthly_rates)
+            livret_a_monthly_equivalent_prices = LivretADataLoader(
+                start, end
+            ).get_monthly_equivalent_prices()
+            livret_a_strategy.simulate_investment_strategy(
+                livret_a_monthly_equivalent_prices
+            )
 
     # Compute metrics
     total_invested = spy_strategy.total_invested_cash[-1]
@@ -155,15 +160,13 @@ if st.button("Lancer la simulation"):
             y=spy_strategy.total_invested_cash,
             mode="lines",
             name="Montant total investi",
-            line=dict(color="royalblue", width=2, dash="dash"),
+            line={"color": "royalblue", "width": 2, "dash": "dash"},
         )
     )
-    spy_strategy.add_to_plot(fig, spy_monthly_prices, "S&P500", "green")
-    gold_strategy.add_to_plot(fig, gold_monthly_prices, "Or", "gold")
+    spy_strategy.add_to_plot(fig, "S&P500", "green")
+    gold_strategy.add_to_plot(fig, "Or", "gold")
     if include_livret_a:
-        livret_a_strategy.add_to_plot(
-            fig, livret_a_monthly_rates, "Livret A", "lightblue"
-        )
+        livret_a_strategy.add_to_plot(fig, "Livret A", "lightblue")
 
     # compute max value for y-axis
     max_value = max(
@@ -175,9 +178,9 @@ if st.button("Lancer la simulation"):
     fig.update_layout(
         xaxis_title="Année",
         yaxis_title="Valeur ($)",
-        legend=dict(xanchor="left", yanchor="top", x=0.01, y=0.95),
-        yaxis=dict(range=[0, max_value * 1.15]),
-        font=dict(family="Courier New, monospace", size=14, color="#7f7f7f"),
+        legend={"xanchor": "left", "yanchor": "top", "x": 0.01, "y": 0.95},
+        yaxis={"range": [0, max_value * 1.15]},
+        font={"family": "Courier New, monospace", "size": 14, "color": "#7f7f7f"},
     )
 
     st.metric("Montant investi", f"{total_invested:,.0f} $")
@@ -198,7 +201,8 @@ if st.button("Lancer la simulation"):
         cols[2].metric("Rendement annuel moyen", f"{livret_a_average_return:.1%}")
     else:
         st.info(
-            f"Le Livret A n'est pas disponible pour les simulations commençant avant {livret_a_start_year}."
+            f"Le Livret A n'est pas disponible pour les simulations "
+            f"commençant avant {livret_a_start_year}."
         )
 
     st.plotly_chart(fig)
@@ -206,13 +210,17 @@ if st.button("Lancer la simulation"):
     # Show warnings based on taxation mode
     if taxation_mode == "PEA" and (total_invested > params["Global"]["PEA_limit"]):
         st.warning(
-            "Plafond PEA atteint durant la stratégie. Les plus-values des investissements au-delà de ce montant ont été taxées à 30%."
+            "Plafond PEA atteint durant la stratégie. Les plus-values des "
+            "investissements au-delà de ce montant ont été taxées à 30%."
         )
 
     # Simple taxation explanation
     if taxation_mode == "PEA":
         st.caption(
-            f"Fiscalité : {params['Global']['exit_tax_rate']*100:.1f}% sur les plus-values des placements jusqu'à {params['Global']['PEA_limit']:,}$, puis {params['Global']['taxable_account_tax_rate']*100:.0f}% au-delà. Livret A sans fiscalité."
+            f"Fiscalité : {params['Global']['exit_tax_rate']*100:.1f}% sur les "
+            f"plus-values des placements jusqu'à {params['Global']['PEA_limit']:,}$, "
+            f"puis {params['Global']['taxable_account_tax_rate']*100:.0f}% au-delà. "
+            "Livret A sans fiscalité."
         )
     else:
         st.caption(
