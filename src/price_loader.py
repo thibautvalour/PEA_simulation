@@ -3,6 +3,7 @@ import pandas as pd
 import yfinance as yf
 
 from src.config import params
+from src.utils import apply_fee_impact
 
 
 class ShillerDataLoader:
@@ -227,17 +228,19 @@ class LivretADataLoader:
         self.normalize = normalize
         validate_dates(start, end)
 
-    def get_monthly_rates(self) -> pd.DataFrame:
+    def get_monthly_equivalent_prices(self) -> pd.DataFrame:
         """Get monthly interest rates for Livret A"""
-        monthly_rates = self._load_and_process_data()
+        monthly_prices = self._load_and_process_data()
         if self.normalize:
             # For Livret A, we'll create a cumulative value starting at 1
-            monthly_rates["Adjusted Close"] = self._compute_cumulative_value(
-                monthly_rates
+            monthly_prices["Adjusted Close"] = self._compute_cumulative_value(
+                monthly_prices
             )
             # Normalize to last value like other assets
-            monthly_rates["Adjusted Close"] /= monthly_rates["Adjusted Close"].iloc[-1]
-        return monthly_rates
+            monthly_prices["Adjusted Close"] /= monthly_prices["Adjusted Close"].iloc[
+                -1
+            ]
+        return monthly_prices
 
     def _load_and_process_data(self) -> pd.DataFrame:
         df = pd.read_csv(self.file_path)
@@ -273,21 +276,3 @@ class LivretADataLoader:
             cumulative_value.iloc[i] = prev_value * (1 + monthly_rate)
 
         return cumulative_value
-
-
-def apply_fee_impact(monthly_prices: pd.DataFrame, yearly_fee: float) -> pd.DataFrame:
-    """Apply fee impact to monthly prices"""
-
-    # Convert annual fee to monthly
-    monthly_fee = (1 + yearly_fee) ** (1 / 12) - 1
-
-    # Calculate returns with fee impact
-    returns = monthly_prices["Adjusted Close"].pct_change().fillna(0) - monthly_fee
-
-    # Update prices based on cumulative returns
-    monthly_prices["Cumulative Return"] = (1 + returns).cumprod()
-    monthly_prices["Adjusted Close"] = (
-        monthly_prices["Adjusted Close"].iloc[0] * monthly_prices["Cumulative Return"]
-    )
-
-    return monthly_prices

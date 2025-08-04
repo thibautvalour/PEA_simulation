@@ -1,7 +1,6 @@
-﻿numpy
-pandas
-yfinance
-plotly
-streamlit
-nbformat>=4.2.0
+﻿pandas
 xlrd
+yfinance
+streamlit
+plotly
+nbformat>=4.2.0

@@ -1,3 +1,9 @@
+"""
+This module contains classes for simulating investment strategies for given historical prices.
+A Meta-class defines the Dollar-Cost Averaging (DCA) strategy,
+Specific implementations enable SP500, Gold, and even Livret A performance simulation.
+"""
+
 from datetime import datetime
 import plotly.graph_objects as go
 
@@ -268,12 +274,12 @@ class LivretAStrategy:
         self.portfolio_values = []
         self.exit_values = []
 
-    def simulate_investment_strategy(self, monthly_rates):
+    def simulate_investment_strategy(self, monthly_prices):
         cash = float(self.initial_cash)
         shares = 0
         monthly_contrib = self.initial_monthly_contribution
 
-        for idx, (_, row) in enumerate(monthly_rates.iterrows()):
+        for idx, (_, row) in enumerate(monthly_prices.iterrows()):
             if (idx + 1) % 12 == 0:
                 monthly_contrib += self.yearly_bump
 
@@ -314,18 +320,18 @@ class LivretAStrategy:
         )
         return fig
 
-    def create_portfolio_visualization(self, monthly_rates):
+    def create_portfolio_visualization(self, monthly_prices):
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=monthly_rates.index,
+                x=monthly_prices.index,
                 y=self.total_invested_cash,
                 mode="lines",
                 name="Montant total investi",
                 line=dict(color="royalblue", width=2, dash="dash"),
             )
         )
-        fig = self.add_to_plot(fig, monthly_rates, color="lightblue")
+        fig = self.add_to_plot(fig, monthly_prices, color="lightblue")
 
         fig.update_layout(
             xaxis_title="Année",

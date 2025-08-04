@@ -9,16 +9,17 @@ import plotly.graph_objects as go
 
 from src.config import params
 from src.price_loader import (
-    YFStockLoader,
     ShillerDataLoader,
     GoldDataLoader,
     LivretADataLoader,
 )
 from src.strategies import DCAStrategy, GoldDCAStrategy, LivretAStrategy
+from src.utils import compute_global_return, compute_geometric_mean_return
 
+
+st.title("Simulation d'investissement récurrent (DCA)")
 
 st.set_page_config(page_icon=":money_with_wings:")
-st.title("Simulation d'investissement récurrent (DCA)")
 
 # Hide Streamlit options and style buttons
 hide_streamlit_style = """
@@ -47,7 +48,8 @@ with col_end:
     )
 
 # Ensure the end year is after the start year
-if ending_year < starting_year:
+n_years = ending_year - starting_year
+if n_years < 1:
     st.error("L'année de fin doit être supérieure à l'année de départ.")
 
 col_fisc, col_init = st.columns(2)
@@ -57,7 +59,6 @@ with col_fisc:
         ["PEA", "Aucune"],
         help="PEA : les plus-values sont taxées à 17,2 % jusqu’à 150 k€, puis à 30 % au-delà. Aucune : pas de taxation.",
     )
-    # Set max investment based on taxation mode
 
 with col_init:
     initial_investment = st.number_input(
@@ -81,10 +82,8 @@ with col_yearly:
     )
 
 if st.button("Lancer la simulation"):
-
     with st.spinner("Calcul en cours..."):
-
-        time.sleep(1)  # Simulate some processing time
+        time.sleep(0.5)  # Simulate some processing time, UI looks smarter
         start = datetime.datetime(starting_year, 1, 1)
         end = datetime.datetime(ending_year, 1, 1)
 
@@ -133,10 +132,23 @@ if st.button("Lancer la simulation"):
             livret_a_monthly_rates = LivretADataLoader(start, end).get_monthly_rates()
             livret_a_strategy.simulate_investment_strategy(livret_a_monthly_rates)
 
-    # Create combined visualization
-    fig = go.Figure()
+    # Compute metrics
+    total_invested = spy_strategy.total_invested_cash[-1]
+    spy_exit = spy_strategy.exit_values[-1]
+    gold_exit = gold_strategy.exit_values[-1]
+    spy_return = compute_global_return(spy_exit, total_invested)
+    gold_return = compute_global_return(gold_exit, total_invested)
+    spy_average_return = compute_geometric_mean_return(spy_return, n_years)
+    gold_average_return = compute_geometric_mean_return(gold_return, n_years)
+    if include_livret_a:
+        livret_a_exit = livret_a_strategy.exit_values[-1]
+        livret_a_return = compute_global_return(livret_a_exit, total_invested)
+        livret_a_average_return = compute_geometric_mean_return(
+            livret_a_return, n_years
+        )
 
-    # Add invested cash baseline (same for both strategies)
+    # Plot
+    fig = go.Figure()
     fig.add_trace(
         go.Scatter(
             x=spy_monthly_prices.index,
@@ -146,21 +158,20 @@ if st.button("Lancer la simulation"):
             line=dict(color="royalblue", width=2, dash="dash"),
         )
     )
-
-    # Add strategies to plot
     spy_strategy.add_to_plot(fig, spy_monthly_prices, "S&P500", "green")
     gold_strategy.add_to_plot(fig, gold_monthly_prices, "Or", "gold")
     if include_livret_a:
-        livret_a_strategy.add_to_plot(fig, livret_a_monthly_rates, "Livret A", "lightblue")
+        livret_a_strategy.add_to_plot(
+            fig, livret_a_monthly_rates, "Livret A", "lightblue"
+        )
 
-    # Update layout
-    exit_values_list = [
-        max(spy_strategy.exit_values),
-        max(gold_strategy.exit_values),
-    ]
-    if include_livret_a:
-        exit_values_list.append(max(livret_a_strategy.exit_values))
-    max_value = max(exit_values_list)
+    # compute max value for y-axis
+    max_value = max(
+        *spy_strategy.exit_values,
+        *gold_strategy.exit_values,
+        *(livret_a_strategy.exit_values if include_livret_a else []),
+    )
+    # update y axis range
     fig.update_layout(
         xaxis_title="Année",
         yaxis_title="Valeur ($)",
@@ -169,48 +180,26 @@ if st.button("Lancer la simulation"):
         font=dict(family="Courier New, monospace", size=14, color="#7f7f7f"),
     )
 
-    # Display results
-    total_invested = spy_strategy.total_invested_cash[-1]
-    spy_exit = spy_strategy.exit_values[-1]
-    gold_exit = gold_strategy.exit_values[-1]
-
     st.metric("Montant investi", f"{total_invested:,.0f} $")
 
+    cols = st.columns(3 if include_livret_a else 2)
+    cols[0].subheader("📈 S&P500")
+    cols[0].metric("Valeur de sortie", f"{spy_exit:,.0f} $")
+    cols[0].metric("Rendement total", f"{(spy_return * 100):.1f}%")
+    cols[0].metric("Rendement annuel moyen", f"{spy_average_return:.1%}")
+    cols[1].subheader("🥇 Or")
+    cols[1].metric("Valeur de sortie", f"{gold_exit:,.0f} $")
+    cols[1].metric("Rendement total", f"{(gold_return * 100):.1f}%")
+    cols[1].metric("Rendement annuel moyen", f"{gold_average_return:.1%}")
     if include_livret_a:
-        livret_a_exit = livret_a_strategy.exit_values[-1]
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.subheader("📈 S&P500")
-            st.metric("Valeur de sortie", f"{spy_exit:,.0f} $")
-            spy_return = ((spy_exit / total_invested) - 1) * 100
-            st.metric("Rendement total", f"{spy_return:.1f}%")
-
-        with col2:
-            st.subheader("🥇 Or")
-            st.metric("Valeur de sortie", f"{gold_exit:,.0f} $")
-            gold_return = ((gold_exit / total_invested) - 1) * 100
-            st.metric("Rendement total", f"{gold_return:.1f}%")
-
-        with col3:
-            st.subheader("🏦 Livret A", help="Aucune fiscalité")
-            st.metric("Valeur de sortie", f"{livret_a_exit:,.0f} $")
-            livret_a_return = ((livret_a_exit / total_invested) - 1) * 100
-            st.metric("Rendement total", f"{livret_a_return:.1f}%")
+        cols[2].subheader("🏦 Livret A", help="Aucune fiscalité")
+        cols[2].metric("Valeur de sortie", f"{livret_a_exit:,.0f} $")
+        cols[2].metric("Rendement total", f"{(livret_a_return * 100):.1f}%")
+        cols[2].metric("Rendement annuel moyen", f"{livret_a_average_return:.1%}")
     else:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("📈 S&P500")
-            st.metric("Valeur de sortie", f"{spy_exit:,.0f} $")
-            spy_return = ((spy_exit / total_invested) - 1) * 100
-            st.metric("Rendement total", f"{spy_return:.1f}%")
-
-        with col2:
-            st.subheader("🥇 Or")
-            st.metric("Valeur de sortie", f"{gold_exit:,.0f} $")
-            gold_return = ((gold_exit / total_invested) - 1) * 100
-            st.metric("Rendement total", f"{gold_return:.1f}%")
-            
-        st.info(f"Le Livret A n'est pas disponible pour les simulations commençant avant {livret_a_start_year}.")
+        st.info(
+            f"Le Livret A n'est pas disponible pour les simulations commençant avant {livret_a_start_year}."
+        )
 
     st.plotly_chart(fig)
 
